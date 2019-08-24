@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import shutil
 import os
 import subprocess
 import array
@@ -8,16 +9,17 @@ import cv2
 ###################################################################
 # Point to the C3D directory
 caffe_root = os.path.abspath(os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        '../..'
-        ))
+    os.path.dirname(os.path.realpath(__file__)),
+    '../..'
+))
 
 # GPU to use
 gpu_id = 0
 
 # 50 should be good for 6GB VRAM. Decrease as needed
-batch_size = 50
+batch_size = 16
 ###################################################################
+
 
 def check_trained_model(trained_model):
     ''' Check if trained_model is there. otherwise, download '''
@@ -26,15 +28,15 @@ def check_trained_model(trained_model):
         print("[Info] trained_model={} found. Good to go!".format(trained_model))
     else:
         download_cmd = [
-                "wget",
-                "-O",
-                trained_model,
-                "https://www.dropbox.com/s/vr8ckp0pxgbldhs/conv3d_deepnetA_sport1m_iter_1900000?dl=0",
-                ]
+            "wget",
+            "-O",
+            trained_model,
+            "https://www.dropbox.com/s/vr8ckp0pxgbldhs/conv3d_deepnetA_sport1m_iter_1900000?dl=0",
+        ]
 
         print("[Info] Download Sports1m pre-trained model: \"{}\"".format(
-                ' '.join(download_cmd)
-                ))
+            ' '.join(download_cmd)
+        ))
 
         return_code = subprocess.call(download_cmd)
 
@@ -42,6 +44,7 @@ def check_trained_model(trained_model):
             print("[Error] Downloading of pretrained model failed. Check!")
             sys.exit(-10)
     return
+
 
 def get_frame_count(video):
     ''' Get frame counts and FPS for a video '''
@@ -59,6 +62,7 @@ def get_frame_count(video):
         fps = 29.97
 
     return num_frames, fps
+
 
 def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
     ''' Extract frames from a video using opencv '''
@@ -88,12 +92,13 @@ def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
             sys.exit(-7)
 
         frame_file = os.path.join(
-                frame_dir,
-                '{0:06f}.jpg'.format(frame_num)
-                )
+            frame_dir,
+            '{0:06d}.jpg'.format(int(frame_num))
+        )
         cv2.imwrite(frame_file, frame)
 
     return
+
 
 def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
     ''' Extract C3D features by running caffe binary '''
@@ -101,9 +106,9 @@ def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
     almost_infinite_num = 9999999
 
     extract_bin = os.path.join(
-            caffe_root,
-            "build/tools/extract_image_features.bin"
-            )
+        caffe_root,
+        "build/tools/extract_image_features.bin"
+    )
 
     if not os.path.isfile(extract_bin):
         print("[Error] Build facebook/C3D first, or make sure caffe_dir is "
@@ -111,28 +116,29 @@ def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
         sys.exit(-9)
 
     feature_extraction_cmd = [
-            extract_bin,
-            feature_prototxt,
-            trained_model,
-            str(gpu_id),
-            str(batch_size),
-            str(almost_infinite_num),
-            ofile,
-            feature_layer,
-            ]
+        extract_bin,
+        feature_prototxt,
+        trained_model,
+        str(gpu_id),
+        str(batch_size),
+        str(almost_infinite_num),
+        ofile,
+        feature_layer,
+    ]
 
     print("[Info] Running C3D feature extraction: \"{}\"".format(
-            ' '.join(feature_extraction_cmd)
-            ))
+        ' '.join(feature_extraction_cmd)
+    ))
     return_code = subprocess.call(feature_extraction_cmd)
 
     return return_code
+
 
 def get_features(feature_files, feature_layer):
     ''' From binary feature files, take an average (for multiple clips) '''
 
     # in case of a single feature_file, force it to a list
-    if isinstance(feature_files, basestring):
+    if isinstance(feature_files, str):
         feature_files = [feature_files]
 
     # read each feature, take an an average
@@ -162,6 +168,7 @@ def get_features(feature_files, feature_layer):
 
     return feature_vec_avg
 
+
 def generate_feature_prototxt(out_file, src_file, mean_file=None):
     ''' Generate a model architecture, pointing to the given src_file '''
 
@@ -170,11 +177,11 @@ def generate_feature_prototxt(out_file, src_file, mean_file=None):
     # https://github.com/facebook/C3D/blob/master/examples/c3d_feature_extraction/sport1m_train16_128_mean.binaryproto?raw=true
     if not mean_file:
         mean_file = os.path.join(
-                caffe_root,
-                "examples",
-                "c3d_feature_extraction",
-                "sport1m_train16_128_mean.binaryproto"
-                )
+            caffe_root,
+            "examples",
+            "c3d_feature_extraction",
+            "sport1m_train16_128_mean.binaryproto"
+        )
 
     if not os.path.isfile(mean_file):
         print("[Error] mean cube file={} does not exist.".format(mean_file))
@@ -632,26 +639,9 @@ layers {{
 
     return
 
-def main():
-    ''' Extract and save features '''
 
-    # a video is the first argument
-    # if missing, use a sample video
-    if len(sys.argv) == 1:
-        print('''Usage: python {} <video file> (<optional output directory>)
-For example, "python {} {}" will extract features from an example image.'''.format(
-        sys.argv[0],
-        sys.argv[0],
-        os.path.join(
-                caffe_root,
-                'examples',
-                'c3d_feature_extraction',
-                'input',
-                'avi',
-                'v_BaseballPitch_g01_c01.avi'
-                )
-        ))
-        sys.exit(-1)
+def main(videofile, out_dir=None):
+    ''' Extract and save features '''
 
     # trained model (will be downloaded if missing)
     trained_model = os.path.join(
@@ -659,19 +649,19 @@ For example, "python {} {}" will extract features from an example image.'''.form
         "examples",
         "c3d_feature_extraction",
         "conv3d_deepnetA_sport1m_iter_1900000"
-        )
+    )
     # check model
     check_trained_model(trained_model)
 
     # save extracted frames temporarily
-    tmp_dir = 'tmp'
+    tmp_dir = '/tmp'
 
-    video_file = sys.argv[1]
+    video_file = videofile
 
     # where feature csv file will be saved --
-    # where the video is (by default), or second argument
-    if len(sys.argv) > 2:
-        c3d_feature_outdir = sys.argv[2]
+    # where the video is (by default)
+    if out_dir:
+        c3d_feature_outdir = out_dir
     else:
         c3d_feature_outdir = os.path.dirname(video_file)
     if not os.path.exists(c3d_feature_outdir):
@@ -684,10 +674,10 @@ For example, "python {} {}" will extract features from an example image.'''.form
     force_overwrite = False
 
     # by default, use 16 frames
-    num_frames_per_clip = 16 # ~0.5 second
+    frame_inc = 16  # ~0.5 second
 
     # sampling rate (in seconds)
-    sample_every_N_sec = 60
+    #sample_every_N_sec = 60
 
     # don't extract beyond this (in seconds)
     max_processing_sec = 599
@@ -696,23 +686,21 @@ For example, "python {} {}" will extract features from an example image.'''.form
     num_frames, fps = get_frame_count(video_file)
     print("[Info] num_frames={}, fps={}".format(num_frames, fps))
 
-    if num_frames < int(sample_every_N_sec * fps):
-        start_frame = (num_frames - num_frames_per_clip) / 2
-        start_frames = [start_frame]
-    else:
-        frame_inc = int(sample_every_N_sec * fps)
-        start_frame = frame_inc / 2
-        # make sure not to reach the edge of the video
-        end_frame = min(num_frames, int(max_processing_sec * fps)) - \
-                    num_frames_per_clip
-        start_frames = []
-        for frame_index in range(start_frame, end_frame, frame_inc):
-            #print "[Debug] adding frame_index={}".format(frame_index)
-            start_frames.append(frame_index)
+    # if num_frames < int(sample_every_N_sec * fps):
+    #    start_frame = (num_frames - num_frames_per_clip) // 2
+    #    start_frames = [start_frame]
+    # else:
+    start_frame = 0
+    # make sure not to reach the edge of the video
+    end_frame = num_frames - frame_inc
+    start_frames = []
+    for frame_index in range(start_frame, end_frame, frame_inc):
+        # print("[Debug] adding frame_index={}".format(frame_index))
+        start_frames.append(frame_index)
 
     video_id, video_ext = os.path.splitext(
-            os.path.basename(video_file)
-            )
+        os.path.basename(video_file)
+    )
 
     # generate auxilliary files for C3D feature extraction
     input_file = os.path.join(tmp_dir, 'input.txt')
@@ -727,9 +715,9 @@ For example, "python {} {}" will extract features from an example image.'''.form
     for start_frame in start_frames:
         # output feature file (CSV)
         feature_filename = os.path.join(
-                c3d_feature_outdir,
-                "{0}_{1:06f}.csv".format(video_id, start_frame)
-                )
+            c3d_feature_outdir,
+            "{0}_{1:06d}.csv".format(video_id, int(start_frame))
+        )
 
         if os.path.isfile(feature_filename) and not force_overwrite:
             print("[Warning] feature was already saved. Skipping this video...")
@@ -747,9 +735,9 @@ For example, "python {} {}" will extract features from an example image.'''.form
 
         # write "output_prefix.txt" with one clip
         clip_id = os.path.join(
-                tmp_dir,
-                video_id + '_{0:06f}'.format(start_frame)
-                )
+            tmp_dir,
+            video_id + '_{0:06d}'.format(int(start_frame))
+        )
         f_output_prefix.write("{}\n".format(os.path.join(tmp_dir, clip_id)))
     f_input.close()
     f_output_prefix.close()
@@ -757,20 +745,20 @@ For example, "python {} {}" will extract features from an example image.'''.form
     # second, run C3D extraction (with a batch)
     if os.path.isfile(input_file) and os.path.getsize(input_file):
         return_code = run_C3D_extraction(
-                feature_prototxt,
-                output_prefix_file,
-                feature_layer,
-                trained_model
-                )
+            feature_prototxt,
+            output_prefix_file,
+            feature_layer,
+            trained_model
+        )
         print("Return code is:", return_code)
         # third, if C3D ran successfully, convert each feature file (binary) to csv
         if return_code == 0:
             for start_frame in start_frames:
                 # output feature file (CSV)
                 feature_filename = os.path.join(
-                        c3d_feature_outdir,
-                        "{0}_{1:06f}.csv".format(video_id, start_frame)
-                        )
+                    c3d_feature_outdir,
+                    "{0}_{1:06d}.csv".format(video_id, int(start_frame))
+                )
 
                 if os.path.isfile(feature_filename) and not force_overwrite:
                     print("[Warning] feature was already saved. Skipping this "
@@ -778,23 +766,24 @@ For example, "python {} {}" will extract features from an example image.'''.form
                     continue
 
                 clip_id = os.path.join(
-                        tmp_dir,
-                        video_id + '_{0:06f}'.format(start_frame)
-                        )
+                    tmp_dir,
+                    video_id + '_{0:06d}'.format(int(start_frame))
+                )
+                print('clip id', clip_id)
                 feature = get_features([clip_id], feature_layer)
 
                 print("[Info] Saving C3D feature as {}".format(
-                        feature_filename,
-                        ))
+                    feature_filename,
+                ))
                 # save the average feature vector as a CSV
                 np.savetxt(
-                        feature_filename,
-                        feature[None, :],
-                        fmt='%.16f',
-                        delimiter=','
-                        )
+                    feature_filename,
+                    feature[None, :],
+                    fmt='%.16f',
+                    delimiter=','
+                )
+
+            # remove tmp files
+            shutil.rmtree(os.path.join(tmp_dir, video_id))
         else:
             print("[Error] feature extraction failed!")
-
-if __name__ == '__main__':
-    main()
