@@ -16,11 +16,11 @@ sudo update-alternatives --set cc /usr/bin/gcc
 sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
 sudo update-alternatives --set c++ /usr/bin/g++
 
-!sudo apt-get install -f
+sudo apt-get install -f
 
 # install dependencies
 
-!sudo apt-get install -y libprotobuf-dev libleveldb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler
-!sudo apt-get install libatlas-base-dev
-!sudo apt-get install -y --no-install-recommends libboost-all-dev
-!sudo apt-get install -y libgflags-dev libgoogle-glog-dev liblmdb-dev
+sudo apt-get install -y libprotobuf-dev libleveldb-dev libsnappy-dev libhdf5-serial-dev protobuf-compiler
+sudo apt-get install libatlas-base-dev
+sudo apt-get install -y --no-install-recommends libboost-all-dev
+sudo apt-get install -y libgflags-dev libgoogle-glog-dev liblmdb-dev
