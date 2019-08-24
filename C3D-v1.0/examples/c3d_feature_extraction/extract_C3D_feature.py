@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-
-'''
-Extract C3D features as a csv file from a given video, 
-'''
-
 import numpy as np
 import sys
 import os
@@ -29,7 +23,7 @@ def check_trained_model(trained_model):
     ''' Check if trained_model is there. otherwise, download '''
 
     if os.path.isfile(trained_model):
-        print "[Info] trained_model={} found. Good to go!".format(trained_model)
+        print("[Info] trained_model={} found. Good to go!".format(trained_model))
     else:
         download_cmd = [
                 "wget",
@@ -38,14 +32,14 @@ def check_trained_model(trained_model):
                 "https://www.dropbox.com/s/vr8ckp0pxgbldhs/conv3d_deepnetA_sport1m_iter_1900000?dl=0",
                 ]
 
-        print "[Info] Download Sports1m pre-trained model: \"{}\"".format(
+        print("[Info] Download Sports1m pre-trained model: \"{}\"".format(
                 ' '.join(download_cmd)
-                )
+                ))
 
         return_code = subprocess.call(download_cmd)
 
         if return_code != 0:
-            print "[Error] Downloading of pretrained model failed. Check!"
+            print("[Error] Downloading of pretrained model failed. Check!")
             sys.exit(-10)
     return
 
@@ -53,12 +47,12 @@ def get_frame_count(video):
     ''' Get frame counts and FPS for a video '''
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
-        print "[Error] video={} can not be opened.".format(video)
+        print("[Error] video={} can not be opened.".format(video))
         sys.exit(-6)
 
     # get frame counts
-    num_frames = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.cv.CV_CAP_PROP_FPS)
+    num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
     # in case, fps was not available, use default of 29.97
     if not fps or fps != fps:
@@ -71,31 +65,31 @@ def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
 
     # check output directory
     if os.path.isdir(frame_dir):
-        print "[Warning] frame_dir={} does exist. Will overwrite".format(frame_dir)
+        print("[Warning] frame_dir={} does exist. Will overwrite".format(frame_dir))
     else:
         os.makedirs(frame_dir)
 
     # get number of frames
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
-        print "[Error] video={} can not be opened.".format(video)
+        print("[Error] video={} can not be opened.".format(video))
         sys.exit(-6)
 
     # move to start_frame
-    cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, start_frame)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     # grab each frame and save
     for frame_count in range(num_frames_to_extract):
         frame_num = frame_count + start_frame
-        print "[Info] Extracting frame num={}".format(frame_num)
+        print("[Info] Extracting frame num={}".format(frame_num))
         ret, frame = cap.read()
         if not ret:
-            print "[Error] Frame extraction was not successful"
+            print("[Error] Frame extraction was not successful")
             sys.exit(-7)
 
         frame_file = os.path.join(
                 frame_dir,
-                '{0:06d}.jpg'.format(frame_num)
+                '{0:06f}.jpg'.format(frame_num)
                 )
         cv2.imwrite(frame_file, frame)
 
@@ -127,9 +121,9 @@ def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
             feature_layer,
             ]
 
-    print "[Info] Running C3D feature extraction: \"{}\"".format(
+    print("[Info] Running C3D feature extraction: \"{}\"".format(
             ' '.join(feature_extraction_cmd)
-            )
+            ))
     return_code = subprocess.call(feature_extraction_cmd)
 
     return return_code
@@ -143,12 +137,12 @@ def get_features(feature_files, feature_layer):
 
     # read each feature, take an an average
     for clip_count, feature_file in enumerate(feature_files):
-        print "clip_count={}, feature_file={}".format(clip_count, feature_file)
+        print("clip_count={}, feature_file={}".format(clip_count, feature_file))
         if not os.path.exists(feature_file):
             feature_file += '.' + feature_layer
 
         if not os.path.exists(feature_file):
-            print "[Error] feature_file={} does not exist!".format(feature_file)
+            print("[Error] feature_file={} does not exist!".format(feature_file))
             return None
 
         # read binary data
@@ -183,7 +177,7 @@ def generate_feature_prototxt(out_file, src_file, mean_file=None):
                 )
 
     if not os.path.isfile(mean_file):
-        print "[Error] mean cube file={} does not exist.".format(mean_file)
+        print("[Error] mean cube file={} does not exist.".format(mean_file))
         sys.exit(-8)
 
     # replace source video clips / mean_file
@@ -644,7 +638,7 @@ def main():
     # a video is the first argument
     # if missing, use a sample video
     if len(sys.argv) == 1:
-        print '''Usage: python {} <video file> (<optional output directory>)
+        print('''Usage: python {} <video file> (<optional output directory>)
 For example, "python {} {}" will extract features from an example image.'''.format(
         sys.argv[0],
         sys.argv[0],
@@ -656,7 +650,7 @@ For example, "python {} {}" will extract features from an example image.'''.form
                 'avi',
                 'v_BaseballPitch_g01_c01.avi'
                 )
-        )
+        ))
         sys.exit(-1)
 
     # trained model (will be downloaded if missing)
@@ -670,7 +664,7 @@ For example, "python {} {}" will extract features from an example image.'''.form
     check_trained_model(trained_model)
 
     # save extracted frames temporarily
-    tmp_dir = '/tmp'
+    tmp_dir = 'tmp'
 
     video_file = sys.argv[1]
 
@@ -700,7 +694,7 @@ For example, "python {} {}" will extract features from an example image.'''.form
 
     # get frame counts and fps
     num_frames, fps = get_frame_count(video_file)
-    print "[Info] num_frames={}, fps={}".format(num_frames, fps)
+    print("[Info] num_frames={}, fps={}".format(num_frames, fps))
 
     if num_frames < int(sample_every_N_sec * fps):
         start_frame = (num_frames - num_frames_per_clip) / 2
@@ -734,11 +728,11 @@ For example, "python {} {}" will extract features from an example image.'''.form
         # output feature file (CSV)
         feature_filename = os.path.join(
                 c3d_feature_outdir,
-                "{0}_{1:06d}.csv".format(video_id, start_frame)
+                "{0}_{1:06f}.csv".format(video_id, start_frame)
                 )
 
         if os.path.isfile(feature_filename) and not force_overwrite:
-            print "[Warning] feature was already saved. Skipping this video..."
+            print("[Warning] feature was already saved. Skipping this video...")
             continue
 
         # where to save extracted frames
@@ -754,7 +748,7 @@ For example, "python {} {}" will extract features from an example image.'''.form
         # write "output_prefix.txt" with one clip
         clip_id = os.path.join(
                 tmp_dir,
-                video_id + '_{0:06d}'.format(start_frame)
+                video_id + '_{0:06f}'.format(start_frame)
                 )
         f_output_prefix.write("{}\n".format(os.path.join(tmp_dir, clip_id)))
     f_input.close()
@@ -768,14 +762,14 @@ For example, "python {} {}" will extract features from an example image.'''.form
                 feature_layer,
                 trained_model
                 )
-
+        print("Return code is:", return_code)
         # third, if C3D ran successfully, convert each feature file (binary) to csv
         if return_code == 0:
             for start_frame in start_frames:
                 # output feature file (CSV)
                 feature_filename = os.path.join(
                         c3d_feature_outdir,
-                        "{0}_{1:06d}.csv".format(video_id, start_frame)
+                        "{0}_{1:06f}.csv".format(video_id, start_frame)
                         )
 
                 if os.path.isfile(feature_filename) and not force_overwrite:
@@ -785,13 +779,13 @@ For example, "python {} {}" will extract features from an example image.'''.form
 
                 clip_id = os.path.join(
                         tmp_dir,
-                        video_id + '_{0:06d}'.format(start_frame)
+                        video_id + '_{0:06f}'.format(start_frame)
                         )
                 feature = get_features([clip_id], feature_layer)
 
-                print "[Info] Saving C3D feature as {}".format(
+                print("[Info] Saving C3D feature as {}".format(
                         feature_filename,
-                        )
+                        ))
                 # save the average feature vector as a CSV
                 np.savetxt(
                         feature_filename,
@@ -800,7 +794,7 @@ For example, "python {} {}" will extract features from an example image.'''.form
                         delimiter=','
                         )
         else:
-            print "[Error] feature extraction failed!"
+            print("[Error] feature extraction failed!")
 
 if __name__ == '__main__':
     main()
