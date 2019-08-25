@@ -21,11 +21,12 @@ batch_size = 16
 ###################################################################
 
 
-def check_trained_model(trained_model):
+def check_trained_model(trained_model, verbose):
     ''' Check if trained_model is there. otherwise, download '''
 
     if os.path.isfile(trained_model):
-        print("[Info] trained_model={} found. Good to go!".format(trained_model))
+        if(verbose):
+            print("[Info] trained_model={} found. Good to go!".format(trained_model))
     else:
         download_cmd = [
             "wget",
@@ -33,10 +34,10 @@ def check_trained_model(trained_model):
             trained_model,
             "https://www.dropbox.com/s/vr8ckp0pxgbldhs/conv3d_deepnetA_sport1m_iter_1900000?dl=0",
         ]
-
-        print("[Info] Download Sports1m pre-trained model: \"{}\"".format(
-            ' '.join(download_cmd)
-        ))
+        if(verbose):
+            print("[Info] Download Sports1m pre-trained model: \"{}\"".format(
+                ' '.join(download_cmd)
+            ))
 
         return_code = subprocess.call(download_cmd)
 
@@ -64,12 +65,13 @@ def get_frame_count(video):
     return num_frames, fps
 
 
-def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
+def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16, verbose=False, warnings=False):
     ''' Extract frames from a video using opencv '''
 
     # check output directory
     if os.path.isdir(frame_dir):
-        print("[Warning] frame_dir={} does exist. Will overwrite".format(frame_dir))
+        if(warnings):
+            print("[Warning] frame_dir={} does exist. Will overwrite".format(frame_dir))
     else:
         os.makedirs(frame_dir)
 
@@ -85,7 +87,8 @@ def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
     # grab each frame and save
     for frame_count in range(num_frames_to_extract):
         frame_num = frame_count + start_frame
-        print("[Info] Extracting frame num={}".format(frame_num))
+        if(verbose):
+            print("[Info] Extracting frame num={}".format(frame_num))
         ret, frame = cap.read()
         if not ret:
             print("[Error] Frame extraction was not successful")
@@ -100,7 +103,7 @@ def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16):
     return
 
 
-def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
+def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model, verbose):
     ''' Extract C3D features by running caffe binary '''
 
     almost_infinite_num = 9999999
@@ -125,16 +128,16 @@ def run_C3D_extraction(feature_prototxt, ofile, feature_layer, trained_model):
         ofile,
         feature_layer,
     ]
-
-    print("[Info] Running C3D feature extraction: \"{}\"".format(
-        ' '.join(feature_extraction_cmd)
-    ))
+    if(verbose):
+        print("[Info] Running C3D feature extraction: \"{}\"".format(
+            ' '.join(feature_extraction_cmd)
+        ))
     return_code = subprocess.call(feature_extraction_cmd)
 
     return return_code
 
 
-def get_features(feature_files, feature_layer):
+def get_features(feature_files, feature_layer, verbose):
     ''' From binary feature files, take an average (for multiple clips) '''
 
     # in case of a single feature_file, force it to a list
@@ -143,7 +146,9 @@ def get_features(feature_files, feature_layer):
 
     # read each feature, take an an average
     for clip_count, feature_file in enumerate(feature_files):
-        print("clip_count={}, feature_file={}".format(clip_count, feature_file))
+        if(verbose):
+            print("clip_count={}, feature_file={}".format(
+                clip_count, feature_file))
         if not os.path.exists(feature_file):
             feature_file += '.' + feature_layer
 
@@ -640,7 +645,7 @@ layers {{
     return
 
 
-def main(videofile, out_dir=None):
+def main(videofile, out_dir=None, verbose=False, warnings=False):
     ''' Extract and save features '''
 
     # trained model (will be downloaded if missing)
@@ -651,7 +656,7 @@ def main(videofile, out_dir=None):
         "conv3d_deepnetA_sport1m_iter_1900000"
     )
     # check model
-    check_trained_model(trained_model)
+    check_trained_model(trained_model, verbose)
 
     # save extracted frames temporarily
     tmp_dir = '/tmp'
@@ -684,7 +689,8 @@ def main(videofile, out_dir=None):
 
     # get frame counts and fps
     num_frames, fps = get_frame_count(video_file)
-    print("[Info] num_frames={}, fps={}".format(num_frames, fps))
+    if(verbose):
+        print("[Info] num_frames={}, fps={}".format(num_frames, fps))
 
     # if num_frames < int(sample_every_N_sec * fps):
     #    start_frame = (num_frames - num_frames_per_clip) // 2
@@ -720,12 +726,13 @@ def main(videofile, out_dir=None):
         )
 
         if os.path.isfile(feature_filename) and not force_overwrite:
-            print("[Warning] feature was already saved. Skipping this video...")
+            if(warnings):
+                print("[Warning] feature was already saved. Skipping this video...")
             continue
 
         # where to save extracted frames
         frame_dir = os.path.join(tmp_dir, video_id)
-        extract_frames(video_file, start_frame, frame_dir)
+        extract_frames(video_file, start_frame, frame_dir, verbose=verbose, warnings=warnings)
 
         # a dummy label
         dummy_label = 0
@@ -748,9 +755,11 @@ def main(videofile, out_dir=None):
             feature_prototxt,
             output_prefix_file,
             feature_layer,
-            trained_model
+            trained_model,
+            verbose
         )
-        print("Return code is:", return_code)
+        if(verbose):
+            print("Return code is:", return_code)
         # third, if C3D ran successfully, convert each feature file (binary) to csv
         if return_code == 0:
             for start_frame in start_frames:
@@ -761,20 +770,22 @@ def main(videofile, out_dir=None):
                 )
 
                 if os.path.isfile(feature_filename) and not force_overwrite:
-                    print("[Warning] feature was already saved. Skipping this "
-                          "video...")
+                    if(warnings):
+                        print("[Warning] feature was already saved. Skipping this "
+                              "video...")
                     continue
 
                 clip_id = os.path.join(
                     tmp_dir,
                     video_id + '_{0:06d}'.format(int(start_frame))
                 )
-                print('clip id', clip_id)
-                feature = get_features([clip_id], feature_layer)
-
-                print("[Info] Saving C3D feature as {}".format(
-                    feature_filename,
-                ))
+                if(verbose):
+                    print('clip id', clip_id)
+                feature = get_features([clip_id], feature_layer, verbose)
+                if(verbose):
+                    print("[Info] Saving C3D feature as {}".format(
+                        feature_filename,
+                    ))
                 # save the average feature vector as a CSV
                 np.savetxt(
                     feature_filename,
