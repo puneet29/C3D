@@ -9,6 +9,12 @@ For more information about C3D, please refer to the [C3D project website](http:/
 
 For general questions about Caffe, please refer to the [BVLC project website](http://caffe.berkeleyvision.org) for all documentation.
 
+## Modifications
+
+- Changed the Makefile.config
+- Added a jupyter notebook to get started with feature extraction using python3.
+- Changed the C3D_feature_extraction python script to support Python 3 and reduce print statements.
+- Added setup.sh to setup the dependencies and environment.
 
 ## Updates
 
