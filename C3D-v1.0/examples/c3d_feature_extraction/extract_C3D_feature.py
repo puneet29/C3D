@@ -645,7 +645,7 @@ layers {{
     return
 
 
-def main(videofile, out_dir=None, verbose=False, warnings=False):
+def main(videofile, out_dir=None, verbose=False, warnings=False, training=False):
     ''' Extract and save features '''
 
     # trained model (will be downloaded if missing)
@@ -732,7 +732,8 @@ def main(videofile, out_dir=None, verbose=False, warnings=False):
 
         # where to save extracted frames
         frame_dir = os.path.join(tmp_dir, video_id)
-        extract_frames(video_file, start_frame, frame_dir, verbose=verbose, warnings=warnings)
+        extract_frames(video_file, start_frame, frame_dir,
+                       verbose=verbose, warnings=warnings)
 
         # a dummy label
         dummy_label = 0
@@ -762,6 +763,7 @@ def main(videofile, out_dir=None, verbose=False, warnings=False):
             print("Return code is:", return_code)
         # third, if C3D ran successfully, convert each feature file (binary) to csv
         if return_code == 0:
+            features = []
             for start_frame in start_frames:
                 # output feature file (CSV)
                 feature_filename = os.path.join(
@@ -782,17 +784,21 @@ def main(videofile, out_dir=None, verbose=False, warnings=False):
                 if(verbose):
                     print('clip id', clip_id)
                 feature = get_features([clip_id], feature_layer, verbose)
-                if(verbose):
-                    print("[Info] Saving C3D feature as {}".format(
-                        feature_filename,
-                    ))
+
                 # save the average feature vector as a CSV
-                np.savetxt(
-                    feature_filename,
-                    feature[None, :],
-                    fmt='%.16f',
-                    delimiter=','
-                )
+                if(not training):
+                    if(verbose):
+                        print("[Info] Saving C3D feature as {}".format(
+                            feature_filename,
+                        ))
+                    np.savetxt(
+                        feature_filename,
+                        feature[None, :],
+                        fmt='%.16f',
+                        delimiter=','
+                    )
+                else:
+                    yield feature
 
             # remove tmp files
             shutil.rmtree(os.path.join(tmp_dir, video_id))
