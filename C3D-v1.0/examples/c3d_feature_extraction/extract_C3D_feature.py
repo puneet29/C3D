@@ -95,6 +95,7 @@ def extract_frames(video, start_frame, frame_dir, num_frames_to_extract=16, verb
             frame_dir,
             '{0:06d}.jpg'.format(int(frame_num))
         )
+        frame = cv2.resize(frame,(240,320))
         cv2.imwrite(frame_file, frame)
 
     return
